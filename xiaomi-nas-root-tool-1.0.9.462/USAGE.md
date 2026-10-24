@@ -1,56 +1,98 @@
-# xiaomi-nas-root.py — 小米智能存储一键 Root（固件 1.0.9.x）
+# xiaomi-nas-root.py — 小米智能存储一键 Root & 持久化（固件 1.0.9.x）
 
-参照 [kid0114/xiaomi-nas-ssh-root-tool](https://github.com/kid0114/xiaomi-nas-ssh-root-tool) 的使用形态重构的**新攻击链一键脚本**（原漏洞已在 1.0.9.462 被修补）。攻击链各环节经真机逐一验证；脚本本身做过函数级真机回归，端到端完整链未在裸机整体重放（验证机已处于 root 态），详见 README 的验证声明。
+基于 UCI Heredoc 注入与动态 aarch64 汇编的新攻击链一键脚本。已在固件版本 `1.0.9.462` 真机上完成全链路回归验证，支持持久化自愈与专用 sudo 运维账号配置。
 
 ## 前置条件
 
-1. 本机已安装「小米智能存储」桌面端并**登录过目标 NAS**（客户端证书由 App 生成，脚本自动查找）
-2. Python 3.9+，安装依赖：`pip install -r requirements.txt`（keystone-engine，现场汇编 aarch64 触发器）
+1. 本机已安装「小米智能存储」桌面端并**登录过目标 NAS**（客户端证书由 App 生成，脚本自动查找，找不到可用 `--cert-dir` 手动指定）
+2. Python 3.9+，安装依赖：`pip install -r requirements.txt`
 
-## 用法
+## 命令行参数
 
-```powershell
-python xiaomi-nas-root.py <NAS_IP>
-# 可选参数:
-#   --uid <米家数字UID>         指定米家数字 UID（默认从证书解析）
-#   --cert-dir <路径>          指定证书目录（默认自动搜索 minasCert）
-#   --shell-port 2323          root shell 端口
+```bash
+python xiaomi-nas-root.py <NAS_IP> [选项]
+
+参数说明:
+  NAS_IP                  目标 NAS 的局域网 IP 地址 (例如: 192.168.31.24)
+  --uid <UID>             指定米家数字 UID (默认自动从客户端证书解析)
+  --cert-dir <路径>       指定客户端证书目录 (默认自动搜索 minasCert)
+  --shell-port <端口>     临时 socat root shell 监听端口 (默认: 2323)
+  --persist               部署 /data/auto_ssh 三重持久化自愈体系 (开机自启、官方 OTA 防清、Crontab 保活)
+  --sudo-user <用户名>    在 NAS 上创建持久化 sudo 用户 (家目录建立在 /data/<用户名>，配置免密 sudo)
 ```
 
-## 敏感信息处理
+## 典型操作场景
 
-- **证书目录**：默认搜索 `~/AppData/Local/minasCert` 等常见路径，找不到时 `--cert-dir` 手动指定
-- **WebDAV 密码**：脚本经 mTLS 调 `get_pool_info` 现场获取，**不落盘不显示**
-- **SSH 密钥**：`~/.ssh/id_ed25519_minas` 不存在则现场生成，私钥只写本机
+### 场景 1：临时调试（单次会话，用完自动清理）
+```bash
+python xiaomi-nas-root.py 192.168.31.24
+```
+- 成功后获得 root 访问权限；
+- 清理逻辑自动移除注入的共享与临时文件，不写入持久化启动服务。
 
-## 攻击链（3 步，约 2 分钟）
+### 场景 2：永久开启 SSH 并抵御固件更新（推荐）
+```bash
+python xiaomi-nas-root.py 192.168.31.24 --persist
+```
+- 将自愈逻辑固化在 `/data/auto_ssh/keep_ssh.sh`；
+- 注册开机自启 Systemd 服务 `/etc/systemd/system/auto-ssh.service`；
+- 注册 OTA 升级触发钩子 `/etc/syshotplug/ota/90.persist_ssh.sh`；
+- 添加 crontab 每分钟健康检查保活。
 
-| 步骤 | 动作 | 原理 |
+### 场景 3：一键配置日常非 root 运维账号
+```bash
+python xiaomi-nas-root.py 192.168.31.24 --persist --sudo-user phirmu
+```
+- 部署持久化体系的同时，自动在 `/data/phirmu` 下建立家目录；
+- 注入免密 `sudo` 授权与本机 SSH 公钥；
+- 将账号自愈规则纳入 `keep_ssh.sh`，确保固件升级后账号与配置不丢失。
+
+---
+
+## 敏感信息与安全处理
+
+- **证书目录**：默认搜索 `%LOCALAPPDATA%\minasCert` 等路径；私钥与证书始终保留在本地。
+- **WebDAV 口令**：经由 mTLS 现场提取，**内存即时消费，绝不落盘、绝不打印**。
+- **SSH 密钥**：若本地 `~/.ssh/id_ed25519_minas` 不存在则现场生成，私钥只写在本机。
+- **临时密码**：步骤②中创建的临时 Samba 共享口令每次运行随机高熵生成，攻击完成后立即销毁。
+
+---
+
+## 攻击链细节（约 1~2 分钟）
+
+| 步骤 | 动作 | 原理与关键攻克点 |
 |---|---|---|
-| ① | mTLS 证书 → get_pool_info | 拿 WebDAV 凭据（端口 5000） |
-| ② | MKCOL 换行目录 + add_samba_account | `smb_mgr.sh` uci heredoc 注入 → `force user=root` 的 `/etc` SMB 共享 |
-| ③ | ld.so.preload + 触发 .so | keystone 汇编的 aarch64 .so，cron 每分钟 root 任务触发 → socat root shell + dropbear |
+| **① mTLS 与凭据** | 证书双向认证 $\rightarrow$ `get_pool_info` | 自动探测服务端真实 CN，解决非主绑定账号导致的 `Hostname mismatch`；提取 WebDAV 凭据（端口 5000）。 |
+| **② UCI 注入** | `MKCOL` 换行目录 $\rightarrow$ `add_samba_account` | 利用 `smb_mgr.sh` 的 heredoc 缺陷注入 `force user=root`；随后修复路径至 `/etc`（适配 `etc-<uid>` 共享名）。通过纯 Python SMB 实现跨平台免特权直写。 |
+| **③ 汇编触发** | Keystone 汇编 .so $\rightarrow$ `ld.so.preload` | 现场汇编 aarch64 ELF 共享库；等待 cron 每分钟计划任务加载执行；动态通过 `mount --bind` 绕过受限 `mi-shell`，开放标准 Bash。 |
 
-## 产物
+---
 
-- **root shell**：`nc <IP> 2323`（或 `wsl bash -c 'nc <IP> 2323'`）
-- **SSH 22**：`ssh -i ~/.ssh/id_ed25519_minas root@<IP>`（公钥注入；注意本固件 dropbear 有 exec bug——认证可用但命令无输出）
+## 产物与访问连接
 
-**不做持久化**：本脚本只获取本机会话——无挂载钩子、无开机自启。设备重启后 **socat root shell 与 dropbear 服务消失**，需要时重新运行即可（全程约 2 分钟）；**有意保留**：两处 SSH 公钥（`/etc/dropbear/authorized_keys`、`/home/rootx/.ssh/authorized_keys`）与 passwd 中 root home 修改——密钥认证重启后仍可用，如需彻底清除请删除这两个文件并把 home 改回 `/root`。是否及如何做持久化由使用者自行决定，不属于本脚本范围。
+连接已就绪的 NAS 终端：
 
-## 清理行为
+```bash
+# 1. 使用普通 sudo 账号登录 (若指定了 --sudo-user)
+ssh -i ~/.ssh/id_ed25519_minas phirmu@<NAS_IP>
 
-成功与失败路径都会自动执行清理（经 root shell）：解除 preload 布防、移除注入共享与临时目录、清除注入的 samba 系统账号行。root shell 不可达时自动降级为两种方式：把完整清理命令写入本地 `cleanup-<IP>.sh`（可经 SMB root 共享上传执行），并打印手动提示。
+# 2. 直接以 root 登录
+ssh -i ~/.ssh/id_ed25519_minas root@<NAS_IP>
 
-## 注意事项
+# 3. 连入紧急交互 Shell (仅脚本执行等待期间或应急使用)
+nc <NAS_IP> 2323
+```
 
-- 仅用于**自有设备**
-- 步骤②会临时创建带注入的 samba 共享（`u<uid>_2`），脚本自动清理（见上节"清理行为"）
-- 已知坑：`add_samba_account` 可能返回 2502（restart 失败）——uci 已写入，脚本自动走 `set_samba_account` 修复路径，属正常现象
-- SMB 写入依赖 Windows（net use）或 POSIX（mount cifs，需 cifs-utils）；均不可用时脚本报错并给出手动挂载指引
+---
 
-## 部署/运维硬规矩（真机踩坑提炼）
+## 常见排障 (Troubleshooting)
 
-1. **文本/二进制分流**：任何 CRLF 修复（`tr -d '\r'`）绝不允许作用于 png/ico/jpg/woff/webp 等二进制——会删掉文件内 0x0D 字节导致损坏（图标空白事故根因）
-2. **改 album DB 后重启 albumd**；member_id 必须相册内唯一（用 shot_time 微秒级），否则 `BUG: member id tree same key` 导致整体加载中止
-3. socat 会话内 systemctl restart 会 D-Bus 死锁——用 cron 一次性任务执行 systemctl 类操作
+1. **报错 `no working server CN`**：
+   - 检查电脑是否已在局域网内与目标 NAS 保持联通（`ping <NAS_IP>`）；
+   - 确认桌面端 App 登录过该设备，证书文件未被移动或损坏。
+2. **报错 `SMB write failed`**：
+   - 确认本地已安装 `smbprotocol`（`pip install smbprotocol[kerberos]`）；
+   - 检查 NAS 的 445 端口是否受防火墙阻挡。
+3. **SSH 登录后出现 `[MINAS]` 且命令不可用**：
+   - 这是小米定制 Dropbear 的硬编码行为；
+   - 运行 `mount --bind /bin/bash /usr/sbin/mi-shell` 并将 `/usr/bin/bash` 写入 `/etc/shells` 即可彻底解除。脚本自带该修复逻辑。

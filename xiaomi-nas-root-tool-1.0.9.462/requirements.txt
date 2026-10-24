@@ -1,5 +1,7 @@
 # xiaomi-nas-root-tool 依赖
-# Python 3.9+；除 keystone-engine 外全部使用标准库
-# 实测环境: Python 3.11 + keystone-engine 0.9.2
+# Python 3.9+；
+# keystone-engine: 用于现场汇编 aarch64 触发 .so
+# smbprotocol: 纯 Python 实现的 SMB2/SMB3 协议库（提供免 root/免系统 cifs 挂载权限的文件写入）
 
 keystone-engine>=0.9.2
+smbprotocol[kerberos]>=1.15.0

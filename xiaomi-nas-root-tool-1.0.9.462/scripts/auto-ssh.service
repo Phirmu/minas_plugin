@@ -1,0 +1,13 @@
+[Unit]
+Description=Auto Ensure SSH & Bash
+DefaultDependencies=no
+After=local-fs.target
+Before=dropbear.socket dropbear.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /data/auto_ssh/keep_ssh.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sysinit.target multi-user.target
