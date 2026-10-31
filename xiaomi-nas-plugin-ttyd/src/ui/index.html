@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Web 终端 (ttyd)</title>
+  <style>
+    body { background-color: #1a202c; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .box { text-align: center; padding: 2rem; border-radius: 12px; background: #2d3748; box-shadow: 0 4px 20px rgba(0,0,0,0.4); max-width: 480px; }
+    h1 { font-size: 1.5rem; margin-bottom: 0.5rem; color: #38bdf8; }
+    p { font-size: 0.95rem; line-height: 1.5; color: #cbd5e1; }
+    a { display: inline-block; margin-top: 1rem; padding: 0.6rem 1.4rem; background: #0284c7; color: white; border-radius: 6px; text-decoration: none; font-weight: 500; }
+    a:hover { background: #0369a1; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Web 终端正在连接...</h1>
+    <p>如果页面未自动跳转，请点击下方按钮直接进入终端：</p>
+    <a href="./" onclick="location.replace('./'); return false;">打开终端</a>
+  </div>
+</body>
+</html>

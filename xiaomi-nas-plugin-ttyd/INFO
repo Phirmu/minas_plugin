@@ -1,0 +1,20 @@
+{
+  "plugin": "ttyd",
+  "name": "Web 终端",
+  "id": 94,
+  "version": "1.7.7",
+  "tags": [
+    "tool"
+  ],
+  "timestamp": 1792811464,
+  "desc": "Xiaomi NAS 网页终端（ttyd），提供安全高效的 Web 命令行访问",
+  "developer": "phirmu",
+  "publisher": "minas",
+  "changelog": "1.7.7 首发版本：集成 aarch64 ttyd 原生终端与 WebSocket 代理",
+  "system": false,
+  "size": 1400000,
+  "port": "7681",
+  "type": "standard",
+  "forceupgrade": false,
+  "ext": {}
+}

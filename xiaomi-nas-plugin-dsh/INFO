@@ -1,0 +1,21 @@
+{
+  "plugin": "dsh",
+  "name": "DeepSeek Harness",
+  "id": 93,
+  "version": "1.0.0",
+  "tags": [
+    "tool",
+    "ai"
+  ],
+  "timestamp": 1792811464,
+  "desc": "DeepSeek Harness Web 控制台，支持自主智能体交互与本地工程管理",
+  "developer": "phirmu",
+  "publisher": "minas",
+  "changelog": "1.0.0 首发版本：集成 DeepSeek Harness Web 界面与反向代理",
+  "system": false,
+  "size": 250000,
+  "port": "3080",
+  "type": "standard",
+  "forceupgrade": false,
+  "ext": {}
+}

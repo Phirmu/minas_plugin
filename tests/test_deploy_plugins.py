@@ -20,7 +20,7 @@ class DeployPluginsTests(unittest.TestCase):
     def test_discovers_only_plugins_with_nas_entrypoint(self):
         plugins = deploy.discover_plugins()
         self.assertEqual([p.plugin_id for p in plugins],
-                         ["dockerctl", "motrix", "pcbackup", "sysmon"])
+                         ["dockerctl", "dsh", "motrix", "pcbackup", "sysmon", "ttyd"])
         self.assertEqual(next(p.script for p in plugins if p.plugin_id == "sysmon"),
                          "deploy/deploy2.sh")
         self.assertTrue(next(p.pass_host for p in plugins if p.plugin_id == "motrix"))
@@ -99,9 +99,10 @@ class DeployPluginsTests(unittest.TestCase):
 
     def test_make_client_picks_socat_or_ssh(self):
         ssh_conn = deploy.Connection("nas", "1", "root", 22, None, "native", "ssh")
-        socat_conn = deploy.Connection("nas", "1", "root", 22, None, "native", "socat")
-        self.assertIsInstance(deploy.make_client(ssh_conn), deploy.SshClient)
-        self.assertIsInstance(deploy.make_client(socat_conn), deploy.SocatClient)
+        socat_conn = deploy.Connection("nas", "1", "root", 22, None, "native", "socat", cert_dir="/tmp")
+        with patch.object(deploy.SocatClient, "__init__", return_value=None):
+            self.assertIsInstance(deploy.make_client(ssh_conn), deploy.SshClient)
+            self.assertIsInstance(deploy.make_client(socat_conn), deploy.SocatClient)
 
 
 if __name__ == "__main__":

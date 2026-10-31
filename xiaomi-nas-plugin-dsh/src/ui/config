@@ -1,0 +1,13 @@
+{
+    "title": "DeepSeek Harness",
+    "desc": "DeepSeek Harness Web 控制台，支持自主智能体交互与本地工程管理",
+    "icon": "/dsh.icon",
+    "type": "url",
+    "dev_type": [1, 2, 3, 4],
+    "url": [
+        { "dev_type": [1],       "url": "/index.html#/" },
+        { "dev_type": [2, 3, 4], "url": "/index.html#/" }
+    ],
+    "sortid": 36,
+    "widget": []
+}

@@ -1,0 +1,49 @@
+{
+  "ttyd": {
+    "status": "running",
+    "install": true,
+    "upgrade": false,
+    "enable": true,
+    "changetime": 1792811464,
+    "icon": "/icon/ttyd.icon",
+    "progress": "100",
+    "resource": {
+      "mpk": "/home/u__NAS_UID__/plugin/ttyd/INFO",
+      "icon": "/icon/ttyd.icon",
+      "preview": []
+    },
+    "info": {
+      "plugin": "ttyd",
+      "name": "Web 终端",
+      "id": 94,
+      "version": "1.7.7",
+      "tags": [
+        "tool"
+      ],
+      "timestamp": 1792811464,
+      "desc": "Xiaomi NAS 网页终端（ttyd），提供安全高效的 Web 命令行访问",
+      "developer": "phirmu",
+      "publisher": "minas",
+      "changelog": "1.7.7 首发版本：集成 aarch64 ttyd 原生终端与 WebSocket 代理",
+      "system": false,
+      "size": 1400000,
+      "port": "7681",
+      "type": "standard",
+      "forceupgrade": false,
+      "ext": {}
+    },
+    "frontend": {
+      "title": "Web 终端",
+      "desc": "Xiaomi NAS 网页终端（ttyd），提供安全高效的 Web 命令行访问",
+      "icon": "/ttyd.icon",
+      "type": "url",
+      "dev_type": [1, 2, 3, 4],
+      "url": [
+        { "dev_type": [1],       "url": "/index.html#/" },
+        { "dev_type": [2, 3, 4], "url": "/index.html#/" }
+      ],
+      "sortid": 35,
+      "widget": []
+    }
+  }
+}
