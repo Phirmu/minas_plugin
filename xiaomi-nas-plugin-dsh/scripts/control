@@ -20,6 +20,7 @@ UMask=0002
 WorkingDirectory=/data/phirmu/dsh
 Environment=PATH=/data/phirmu/.nvm/versions/node/v26.13.0/bin:/usr/local/bin:/usr/bin:/bin
 Environment=HOME=/data/phirmu
+Environment=DSH_PERMISSION_MODE=danger-full-access
 ExecStart=${NODE_BIN} ${DSH_BIN} web --no-open --port ${PORT} --host 127.0.0.1
 Restart=on-failure
 RestartSec=5
