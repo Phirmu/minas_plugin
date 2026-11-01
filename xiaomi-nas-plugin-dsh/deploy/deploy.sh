@@ -199,7 +199,7 @@ nginx -t && nginx -s reload && echo "    nginx reload 成功"
 
 echo "==> [5.5/8] 检查并修补 dsh 前端渲染与构造器 bug"
 python3 - <<'PATCH_PY'
-import glob, os
+import glob, os, re
 
 pattern = "/data/phirmu/.npm/_npx/*/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets/index-*.js"
 for target_file in glob.glob(pattern):
@@ -302,10 +302,15 @@ for target_file in glob.glob("/data/phirmu/.npm/_npx/*/node_modules/@deepseek-ai
             changed = True
 
         old_err = "if (error instanceof SlotAssemblyError) throw error;"
-        new_err = "/* if (error instanceof SlotAssemblyError) throw error; */"
-        if old_err in code:
-            code = code.replace(old_err, new_err)
-            changed = True
+        new_err = "// IGNORE_SLOT_ASSEMBLY_ERROR: if (error instanceof SlotAssemblyError) throw error;"
+        if "IGNORE_SLOT_ASSEMBLY_ERROR" not in code:
+            pattern = re.compile(r'/\*.*if \(error instanceof SlotAssemblyError\) throw error;.*\*/')
+            if pattern.search(code):
+                code = pattern.sub(new_err, code)
+                changed = True
+            elif old_err in code:
+                code = code.replace(old_err, new_err)
+                changed = True
 
         old_entry_sp = """if (adapter === void 0) throw new SlotAssemblyError("entry declares a session child without an installed 'session' scope adapter");
 \t\t\t\t\tkit["SessionProvider"] = scopeAreaProvider(adapter);"""
