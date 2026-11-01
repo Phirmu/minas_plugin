@@ -1139,11 +1139,16 @@ systemctl enable plugincenter-shield.service >/dev/null 2>&1 || true
 systemctl start plugincenter-shield.service >/dev/null 2>&1 || true
 
 echo "==> [8/8] 验收"
-sleep 1
-CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 "http://127.0.0.1:3080/" 2>/dev/null || echo "000")
-if [ "$CODE" = "200" ] || [ "$CODE" = "401" ] || [ "$CODE" = "302" ] || [ "$CODE" = "303" ]; then
-    echo "    ✓ dsh 服务运行正常 (http://127.0.0.1:3080/)"
-else
+CODE="000"
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+    CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 "http://127.0.0.1:3080/" 2>/dev/null || echo "000")
+    if [ "$CODE" = "200" ] || [ "$CODE" = "401" ] || [ "$CODE" = "302" ] || [ "$CODE" = "303" ]; then
+        echo "    ✓ dsh 服务运行正常 (http://127.0.0.1:3080/)"
+        break
+    fi
+    sleep 1
+done
+if [ "$CODE" != "200" ] && [ "$CODE" != "401" ] && [ "$CODE" != "302" ] && [ "$CODE" != "303" ]; then
     echo "    WARN: dsh 端口未响应，请查看 /tmp/dsh/server.log"
 fi
 echo "✓ dsh 部署完成"

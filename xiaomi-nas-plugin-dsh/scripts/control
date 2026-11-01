@@ -62,6 +62,10 @@ case "$1" in
         ;;
     postinstall)
         _write_unit
+        if [ -f "/etc/systemd/system/${PLUGIN_NAME}.service" ]; then
+            systemctl restart "${PLUGIN_NAME}.service"
+            exit $?
+        fi
         _start
         exit $?
         ;;
@@ -110,6 +114,10 @@ case "$1" in
         ;;
     postupgrade)
         _write_unit
+        if [ -f "/etc/systemd/system/${PLUGIN_NAME}.service" ]; then
+            systemctl restart "${PLUGIN_NAME}.service"
+            exit $?
+        fi
         _start
         exit $?
         ;;
