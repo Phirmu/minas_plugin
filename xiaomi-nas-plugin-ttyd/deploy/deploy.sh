@@ -80,7 +80,7 @@ python3 - "$NGINX_CONF" "$UID_NUM" "$PORT" <<'PY'
 import sys, os, re
 path, uid, port = sys.argv[1], sys.argv[2], sys.argv[3]
 block = f"""# === ttyd (auto-added) ===
-location ~ ^(?:/[a-zA-Z]:)?/plugin/u?{uid}/ttyd/(?:index\\.html)?$ {{
+location ~ ^(?:/[a-zA-Z]:)?/plugin/u?(?:{uid}|[0-9]+)/ttyd/(?:index\\.html)?$ {{
   if ($http_authorization != "") {{
     add_header 'Access-Control-Allow-Credentials' "true" always;
     add_header Set-Cookie "token=$http_authorization; Path=/; HttpOnly; Secure" always;
@@ -98,7 +98,7 @@ location ~ ^(?:/[a-zA-Z]:)?/plugin/u?{uid}/ttyd/(?:index\\.html)?$ {{
   proxy_read_timeout 3600s;
 }}
 
-location ~ ^(?:/[a-zA-Z]:)?/plugin/u?{uid}/ttyd/(?:index\\.html/)?(.*)$ {{
+location ~ ^(?:/[a-zA-Z]:)?/plugin/u?(?:{uid}|[0-9]+)/ttyd/(?:index\\.html/)?(.*)$ {{
   if ($http_authorization != "") {{
     add_header 'Access-Control-Allow-Credentials' "true" always;
     add_header Set-Cookie "token=$http_authorization; Path=/; HttpOnly; Secure" always;
@@ -107,7 +107,7 @@ location ~ ^(?:/[a-zA-Z]:)?/plugin/u?{uid}/ttyd/(?:index\\.html/)?(.*)$ {{
     add_header 'Access-Control-Allow-Credentials' "true" always;
     add_header Set-Cookie "token=$arg_token; Path=/; HttpOnly; Secure" always;
   }}
-  rewrite ^(?:/[a-zA-Z]:)?/plugin/u?{uid}/ttyd/(?:index\\.html/)?(.*)$ /$1 break;
+  rewrite ^(?:/[a-zA-Z]:)?/plugin/u?(?:{uid}|[0-9]+)/ttyd/(?:index\\.html/)?(.*)$ /$1 break;
   proxy_pass http://127.0.0.1:{port};
   proxy_http_version 1.1;
   proxy_set_header Host 127.0.0.1:{port};

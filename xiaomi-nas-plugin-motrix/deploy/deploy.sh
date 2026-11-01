@@ -37,7 +37,8 @@ if [ ! -d "$DATA_ROOT" ] || [ -L "$DATA_ROOT" ]; then
 fi
 mkdir -p "$STATE_DIR" "$DOWNLOAD_DIR"
 OWNER="$(id -u "$USER_NAME"):$(id -g "$USER_NAME")"
-chown "$OWNER" "$STATE_DIR" "$DOWNLOAD_DIR"
+chown -R "$OWNER" "$STATE_DIR"
+chown "$OWNER" "$DOWNLOAD_DIR"
 chmod 700 "$STATE_DIR"
 chmod 750 "$DOWNLOAD_DIR"
 

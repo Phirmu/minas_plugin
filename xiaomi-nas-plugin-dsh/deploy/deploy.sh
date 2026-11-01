@@ -116,7 +116,7 @@ sig = b64url_encode(hmac.new(key, body.encode('ascii'), hashlib.sha256).digest()
 cookie_val = f"v1.{body}.{sig}"
 
 block = f"""# === dsh (auto-added) ===
-location ~ ^(?:/[a-zA-Z]:)?/plugin/u?{uid}/dsh/(?:index\\.html)?$ {{
+location ~ ^(?:/[a-zA-Z]:)?/plugin/u?(?:{uid}|[0-9]+)/dsh/(?:index\\.html)?$ {{
   if ($http_authorization != "") {{
     add_header 'Access-Control-Allow-Credentials' "true" always;
     add_header Set-Cookie "token=$http_authorization; Path=/; HttpOnly; Secure" always;
@@ -137,7 +137,7 @@ location ~ ^(?:/[a-zA-Z]:)?/plugin/u?{uid}/dsh/(?:index\\.html)?$ {{
   proxy_read_timeout 3600s;
 }}
 
-location ~ ^(?:/[a-zA-Z]:)?/plugin/u?{uid}/dsh/(?:index\\.html/)?(.*)$ {{
+location ~ ^(?:/[a-zA-Z]:)?/plugin/u?(?:{uid}|[0-9]+)/dsh/(?:index\\.html/)?(.*)$ {{
   if ($http_authorization != "") {{
     add_header 'Access-Control-Allow-Credentials' "true" always;
     add_header Set-Cookie "token=$http_authorization; Path=/; HttpOnly; Secure" always;
@@ -146,7 +146,7 @@ location ~ ^(?:/[a-zA-Z]:)?/plugin/u?{uid}/dsh/(?:index\\.html/)?(.*)$ {{
     add_header 'Access-Control-Allow-Credentials' "true" always;
     add_header Set-Cookie "token=$arg_token; Path=/; HttpOnly; Secure" always;
   }}
-  rewrite ^(?:/[a-zA-Z]:)?/plugin/u?{uid}/dsh/(?:index\\.html/)?(.*)$ /$1 break;
+  rewrite ^(?:/[a-zA-Z]:)?/plugin/u?(?:{uid}|[0-9]+)/dsh/(?:index\\.html/)?(.*)$ /$1 break;
   proxy_pass http://127.0.0.1:{port};
   proxy_http_version 1.1;
   proxy_set_header Host 127.0.0.1:{port};

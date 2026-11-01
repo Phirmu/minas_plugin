@@ -8,13 +8,20 @@ CONTAINER=motrix-server
 CHAIN=MOTRIX_EGRESS
 
 attempt=0
-while ! "$DOCKER" inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null | grep -qx true; do
+ip=""
+while [ -z "$ip" ]; do
+  if "$DOCKER" inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null | grep -qx true; then
+    ip="$("$DOCKER" inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$CONTAINER" 2>/dev/null || true)"
+  fi
+  if [ -n "$ip" ]; then
+    break
+  fi
   attempt=$((attempt + 1))
   if [ "$attempt" -ge 60 ]; then
-    echo 'Motrix container did not start; outbound rule not installed' >&2
+    echo 'Motrix container did not start or acquire IP address' >&2
     exit 1
   fi
-  sleep 2
+  sleep 1
 done
 
 mode="$("$DOCKER" inspect -f '{{.HostConfig.NetworkMode}}' "$CONTAINER")"
@@ -22,7 +29,7 @@ if [ "$mode" != default ] && [ "$mode" != bridge ]; then
   echo "Unexpected Motrix network mode: $mode" >&2
   exit 1
 fi
-ip="$("$DOCKER" inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$CONTAINER")"
+
 python3 - "$ip" <<'PY'
 import ipaddress, sys
 ip = ipaddress.ip_address(sys.argv[1])
