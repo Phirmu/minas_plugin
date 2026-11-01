@@ -14,8 +14,10 @@ After=network.target
 [Service]
 Type=simple
 User=phirmu
-Group=phirmu
-WorkingDirectory=/data/phirmu
+Group=naspub
+SupplementaryGroups=naspub nasadm u2469233489 u2167447919 docker
+UMask=0002
+WorkingDirectory=/data/phirmu/dsh
 Environment=PATH=/data/phirmu/.nvm/versions/node/v26.13.0/bin:/usr/local/bin:/usr/bin:/bin
 Environment=HOME=/data/phirmu
 ExecStart=${NODE_BIN} ${DSH_BIN} web --no-open --port ${PORT} --host 127.0.0.1

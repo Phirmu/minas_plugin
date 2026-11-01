@@ -795,7 +795,194 @@ if os.path.isfile(patch_yml):
             print("    已在 cordis.patch.yml 中禁用 client-hmr")
     except Exception as e:
         print(f"WARN: 更新 {patch_yml} 失败: {e}")
+
+# 修补 dsh-attachment-local（修复小米 NAS 只读 EROFS 根目录 fsync 导致的 EINVAL 上传失败）
+for target_file in glob.glob("/data/phirmu/.npm/_npx/*/node_modules/@deepseek-ai/dsh-attachment-local/lib/index.js"):
+    try:
+        with open(target_file, "r", encoding="utf-8") as f:
+            code = f.read()
+        old_sync = """async function syncDirectory(path) {
+	if (process.platform === "win32") return;
+	const handle = await open(path, constants.O_RDONLY);
+	try {
+		await handle.sync();
+	} finally {
+		await handle.close();
+	}
+}"""
+        new_sync = """async function syncDirectory(path) {
+	if (process.platform === 'win32') return;
+	try {
+		const handle = await open(path, constants.O_RDONLY);
+		try {
+			await handle.sync();
+		} catch (e) {
+			if (e && e.code !== 'EINVAL' && e.code !== 'EROFS' && e.code !== 'EPERM' && e.code !== 'EBADF') throw e;
+		} finally {
+			await handle.close();
+		}
+	} catch (e) {
+		if (e && e.code !== 'EINVAL' && e.code !== 'EROFS' && e.code !== 'EPERM' && e.code !== 'EBADF' && e.code !== 'EACCES') throw e;
+	}
+}"""
+        if old_sync in code:
+            code = code.replace(old_sync, new_sync)
+            with open(target_file, "w", encoding="utf-8") as f:
+                f.write(code)
+            print(f"    成功修补: dsh-attachment-local/{os.path.basename(target_file)}")
+        else:
+            print(f"    已是最新修补版本: dsh-attachment-local/{os.path.basename(target_file)}")
+    except Exception as e:
+        print(f"WARN: 修补 {target_file} 失败: {e}")
+
+# 修补 dsh-host-directory-picker-browse（支持小米 NAS 用户默认根目录 /nas/pool0/$USER/data/ai）
+for target_file in glob.glob("/data/phirmu/.npm/_npx/*/node_modules/@deepseek-ai/dsh-host-directory-picker-browse/lib/index.js"):
+    try:
+        with open(target_file, "r", encoding="utf-8") as f:
+            code = f.read()
+        if "import { existsSync } from \"node:fs\";" not in code:
+            code = "import { existsSync } from \"node:fs\";\n" + code
+
+        old_list = """\tasync list(path, signal) {
+\t\tconst home = homedir();
+\t\tif (path !== void 0 && !fullyQualified(path)) throw new DirectoryPickerError("directory-unreadable", path, `cannot list "${path}": not a fully qualified path`);
+\t\tconst target = resolve(path ?? home);"""
+
+        new_list = """\tasync list(path, signal) {
+\t\tlet home = homedir();
+\t\tif (path === void 0) {
+\t\t\tfor (const u of ["u2469233489", "u2167447919"]) {
+\t\t\t\tconst cand = "/nas/pool0/" + u + "/data/ai";
+\t\t\t\ttry { if (existsSync(cand)) { home = cand; break; } } catch {}
+\t\t\t}
+\t\t} else if (/^\\/nas\\/pool0\\/u[0-9]+\\/data(\\/ai)?/.test(path)) {
+\t\t\tconst m = path.match(/^(\\/nas\\/pool0\\/u[0-9]+\\/data(\\/ai)?)/);
+\t\t\tif (m) home = m[1];
+\t\t}
+\t\tif (path !== void 0 && !fullyQualified(path)) throw new DirectoryPickerError("directory-unreadable", path, `cannot list "${path}": not a fully qualified path`);
+\t\tconst target = resolve(path ?? home);"""
+
+        if old_list in code:
+            code = code.replace(old_list, new_list)
+            with open(target_file, "w", encoding="utf-8") as f:
+                f.write(code)
+            print(f"    成功修补: dsh-host-directory-picker-browse/{os.path.basename(target_file)}")
+        else:
+            print(f"    已是最新修补版本: dsh-host-directory-picker-browse/{os.path.basename(target_file)}")
+    except Exception as e:
+        print(f"WARN: 修补 {target_file} 失败: {e}")
+
+# 修补 dsh-client-ui-directory-picker-browse（前端选目录对话框默认进入当前用户的 /nas/pool0/$USER/data/ai）
+for target_file in glob.glob("/data/phirmu/.npm/_npx/*/node_modules/@deepseek-ai/dsh-client-ui-directory-picker-browse/lib/client.js"):
+    try:
+        with open(target_file, "r", encoding="utf-8") as f:
+            code = f.read()
+
+        old_open = """\t\t\t\tif (open) {
+\t\t\t\t\tsetParent(null);
+\t\t\t\t\tsetSelected(null);
+\t\t\t\t\tsetChild(null);
+\t\t\t\t\tsetCreatingFolder(false);
+\t\t\t\t\tsetShowHidden(false);
+\t\t\t\t\tnavigate();
+\t\t\t\t\treturn;
+\t\t\t\t}"""
+
+        new_open = """\t\t\t\tif (open) {
+\t\t\t\t\tsetParent(null);
+\t\t\t\t\tsetSelected(null);
+\t\t\t\t\tsetChild(null);
+\t\t\t\t\tsetCreatingFolder(false);
+\t\t\t\t\tsetShowHidden(false);
+\t\t\t\t\tlet defaultPath;
+\t\t\t\t\ttry {
+\t\t\t\t\t\tconst m = window.location.pathname.match(/\\/plugin\\/u?([0-9]+)\\/dsh/);
+\t\t\t\t\t\tif (m && m[1]) defaultPath = "/nas/pool0/u" + m[1] + "/data/ai";
+\t\t\t\t\t} catch (e) {}
+\t\t\t\t\tnavigate(defaultPath);
+\t\t\t\t\treturn;
+\t\t\t\t}"""
+
+        if old_open in code:
+            code = code.replace(old_open, new_open)
+            with open(target_file, "w", encoding="utf-8") as f:
+                f.write(code)
+            print(f"    成功修补: dsh-client-ui-directory-picker-browse/{os.path.basename(target_file)}")
+        else:
+            print(f"    已是最新修补版本: dsh-client-ui-directory-picker-browse/{os.path.basename(target_file)}")
+    except Exception as e:
+        print(f"WARN: 修补 {target_file} 失败: {e}")
+
+# 修补 dsh-client-ui-workspace（前端启动和会话恢复优先选择当前用户的 /nas/pool0/$USER/data/ai 工作区）
+for target_file in glob.glob("/data/phirmu/.npm/_npx/*/node_modules/@deepseek-ai/dsh-client-ui-workspace/lib/client.js"):
+    try:
+        with open(target_file, "r", encoding="utf-8") as f:
+            code = f.read()
+
+        old_target = """\t\t\t\tlet target = workspace?.workspaceId ?? recentWorkspace(workspaces.items, sessions.byId);"""
+
+        new_target = """\t\t\t\tlet userAiPath;
+\t\t\t\ttry {
+\t\t\t\t\tconst m = window.location.pathname.match(/\\/plugin\\/u?([0-9]+)\\/dsh/);
+\t\t\t\t\tif (m && m[1]) userAiPath = "/nas/pool0/u" + m[1] + "/data/ai";
+\t\t\t\t} catch (e) {}
+\t\t\t\tlet userTarget = userAiPath ? workspaces.items.find((item) => item.path === userAiPath)?.workspaceId : void 0;
+\t\t\t\tlet target = workspace?.workspaceId ?? userTarget ?? recentWorkspace(workspaces.items, sessions.byId);"""
+
+        if old_target in code:
+            code = code.replace(old_target, new_target)
+            with open(target_file, "w", encoding="utf-8") as f:
+                f.write(code)
+            print(f"    成功修补: dsh-client-ui-workspace/{os.path.basename(target_file)}")
+        else:
+            print(f"    已是最新修补版本: dsh-client-ui-workspace/{os.path.basename(target_file)}")
+    except Exception as e:
+        print(f"WARN: 修补 {target_file} 失败: {e}")
+
+# 注册默认工作区到 /data/phirmu/.dsh/storages/workspace.json
+ws_file = "/data/phirmu/.dsh/storages/workspace.json"
+if os.path.isfile(ws_file):
+    try:
+        import json
+        with open(ws_file, "r", encoding="utf-8") as f:
+            ws_data = json.load(f)
+        workspaces = ws_data.setdefault("tables", {}).setdefault("workspaces", {})
+        workspace_ids = ws_data.setdefault("global", {}).setdefault("workspaceIds", [])
+        user_workspaces = [
+            {"id": "ws-u2469233489-ai", "path": "/nas/pool0/u2469233489/data/ai", "title": "u2469233489 (ai)"},
+            {"id": "ws-u2167447919-ai", "path": "/nas/pool0/u2167447919/data/ai", "title": "u2167447919 (ai)"}
+        ]
+        ws_changed = False
+        for uws in user_workspaces:
+            existing = any(w.get("path") == uws["path"] for w in workspaces.values())
+            if not existing:
+                now_str = "2026-11-01T00:00:00.000Z"
+                workspaces[uws["id"]] = {
+                    "path": uws["path"],
+                    "title": uws["title"],
+                    "sessionIds": [],
+                    "createdAt": now_str,
+                    "updatedAt": now_str
+                }
+                if uws["id"] not in workspace_ids:
+                    workspace_ids.insert(0, uws["id"])
+                ws_changed = True
+        if ws_changed:
+            with open(ws_file, "w", encoding="utf-8") as f:
+                json.dump(ws_data, f, ensure_ascii=False, indent=2)
+            print("    已向 workspace.json 注册用户专属 ai 默认工作区")
+    except Exception as e:
+        print(f"WARN: 注册默认工作区失败: {e}")
 PATCH_PY
+
+echo "==> [5.6/8] 检查并配置用户 ai 根目录及权限"
+for u_dir in /nas/pool0/u*/data; do
+    [ -d "$u_dir" ] || continue
+    ai_dir="${u_dir}/ai"
+    mkdir -p "$ai_dir"
+    chown :naspub "$ai_dir" 2>/dev/null || true
+    chmod 2775 "$ai_dir" 2>/dev/null || true
+done
 
 echo "==> [6/8] 启动服务（通过 scripts/control postinstall）"
 PLUG_SRC_DIR="${HOME_DIR}/src" \
